@@ -31,8 +31,10 @@ wheels/
 *.swp
 *.swo
 
+# Jupyter
+.ipynb_checkpoints/
+
 # OS
 .DS_Store
 Thumbs.db
 *.log
-
