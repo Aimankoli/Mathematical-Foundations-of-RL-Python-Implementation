@@ -2,6 +2,10 @@ from grid import GridWorld, make_random_grid
 import numpy as np
 from tabulate import tabulate
 from typing import List, Tuple, Iterable, Set
+import pathlib
+
+CHECKPOINT = 5          # save every 20 iterations
+LOGFILE    = "training_log.npz"
 
 #predefinitions to make takings actions easier
 L=0
@@ -21,6 +25,11 @@ def init_pi(env: GridWorld):
     for state in range(env.nS):
         pi[state] = S
     return pi
+
+policy_log = []       # list[ np.ndarray ]  (nS,) int
+value_log  = []       # list[ np.ndarray ]  (nS,) float
+env_meta   = {}       # dict  (start/goal/holes/shape)  ← stored once
+
 
 def recreate_path(pi: np.array, env: GridWorld):
     path_grid = np.zeros((env.rows, env.cols), dtype=object)
@@ -49,36 +58,87 @@ def value_iteration(env: GridWorld):
         #take maximum a and then set pi[s] = a
         #then set v[s] to the return of chosing this max a
 
-    pi = init_pi(env)
-    v_table = init_v(env)
-    q_table = np.full((env.nS, env.nA), 0, dtype=float)
-    diff = float('inf')
-    while diff>0.0001:
-        v_table_new = np.copy(v_table)
-        for state in range (env.nS):
-            max_reward = float('-inf')
-            for action in range (env.nA):
-                qvalue = env.reward[state][action] + DISCOUNT*v_table[env.next_state[state][action]]
-                q_table[state][action] = qvalue
-                if qvalue>=max_reward:
-                    max_reward = qvalue
-                    pi[state] = action
-            v_table_new[state] = max_reward
-        diff = np.sum(np.absolute(v_table_new-v_table))
-        v_table = np.copy(v_table_new)
 
-    ##Recreate path
-    path = recreate_path(pi, env)
+
+    pi       = init_pi(env)
+    v_table  = init_v(env)
+    q_table  = np.zeros((env.nS, env.nA))
+    diff     = float('inf')
+    iters    = 0
+
+    # LOG 0: environment descriptor (once)
+    env_meta.update({
+        "rows": env.rows,
+        "cols": env.cols,
+        "start": env.start,
+        "goal": env.goal,
+        "holes": np.array(sorted(env.holes), dtype=int)
+    })
+
+    while diff > 1e-4:
+        v_new = np.copy(v_table)
+        for s in range(env.nS):
+            best = -np.inf
+            for a in range(env.nA):
+                q = env.reward[s, a] + 0.9 * v_table[env.next_state[s, a]]
+                q_table[s, a] = q
+                if q >= best:
+                    best = q
+                    pi[s] = a
+            v_new[s] = best
+
+        diff   = np.sum(np.abs(v_new - v_table))
+        v_table = v_new
+        iters  += 1
+
+        # -------------------- LOG every 20 iterations -----------------
+        if iters % CHECKPOINT == 0:
+            policy_log.append(np.copy(pi))
+            value_log .append(np.copy(v_table))
+
+    print("Number of iterations:", iters)
+
+    # -------------------- dump everything once VI is done ------------
+    np.savez_compressed(
+        LOGFILE,
+        policy=np.stack(policy_log),
+        value =np.stack(value_log ),
+        **env_meta
+    )
+
+    return recreate_path(pi, env)
+
+
+    # pi = init_pi(env)
+    # v_table = init_v(env)
+    # q_table = np.full((env.nS, env.nA), 0, dtype=float)
+    # diff = float('inf')
+    # iterations = 0
+    # while diff>0.0001:
+    #     v_table_new = np.copy(v_table)
+    #     for state in range (env.nS):
+    #         max_reward = float('-inf')
+    #         for action in range (env.nA):
+    #             qvalue = env.reward[state][action] + DISCOUNT*v_table[env.next_state[state][action]]
+    #             q_table[state][action] = qvalue
+    #             if qvalue>=max_reward:
+    #                 max_reward = qvalue
+    #                 pi[state] = action
+    #         v_table_new[state] = max_reward
+    #     diff = np.sum(np.absolute(v_table_new-v_table))
+    #     v_table = np.copy(v_table_new)
+    #     iterations += 1
+    # ##Recreate path
+    # path = recreate_path(pi, env)
+    # print(f"Number of iterations: {iterations}")
     
-    
-    
-    return path
+    # return path
 
 
         
 
 if __name__ == "__main__":
-    env = make_random_grid(10, 10, n_holes=5, seed=40)
+    env = make_random_grid(20, 20, n_holes=100, seed=42)
     print("Randomly generated environment:\n")
     env.render()
     path = value_iteration(env)

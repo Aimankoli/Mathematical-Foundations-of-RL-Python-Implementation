@@ -9,7 +9,7 @@ State  = int  # flattened index
 # Displacement vectors for actions: L, R, U, D, Stay
 _DRDC = [ (0, -1), (0, 1), (-1, 0), (1, 0), (0, 0) ]
 
-HOLE_REWARD  = -1.0
+HOLE_REWARD  = -2.0
 GOAL_REWARD  = +1.0
 STEP_REWARD  =  0.0
 
