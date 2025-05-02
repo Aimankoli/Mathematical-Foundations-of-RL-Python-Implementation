@@ -42,11 +42,11 @@ def policy_iteration(env: GridWorld):
     while True:
         V = evaluate_policy(pi, env)
 
-        # ---------- NEW: store *every* iteration -------------------------
+        # store iterations
         if iterations % 2 == 0:
             policy_log.append(np.copy(pi))
             value_log .append(np.copy(V))
-        # ----------------------------------------------------------------
+
 
         policy_stable = True
         for s in range(env.nS):
