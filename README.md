@@ -25,4 +25,4 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Run the main visualisation script
-python visualisations.py
+python src/visualisations.py
